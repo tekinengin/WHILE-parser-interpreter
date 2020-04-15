@@ -20,7 +20,7 @@ INTERPRETER: This class accepts an AST and evaluate it.
 '''
 
 
-INT, SUM, SUB, MUL, EOF = ['INTEGER', 'SUM', 'SUB', 'MUL', 'EOF']
+INT, SUM, SUB, MUL, LPARENT, RPARENT, EOF = ['INTEGER', 'SUM', 'SUB', 'MUL', '(', ')','EOF']
 
 class Token(object):
     def __init__(self, type, value):
@@ -92,6 +92,16 @@ class Lexer(object):
             elif self.current_char == '*':
                 self.advance()
                 return Token(MUL, '*')
+
+            elif self.current_char == '(':
+                self.advance()
+                return Token(LPARENT, '(')
+
+            elif self.current_char == ')':
+                self.advance()
+                return Token(RPARENT, ')')
+
+
             
             raise Exception('Syntax Error...')
             
@@ -112,6 +122,12 @@ class Parser(object):
             token = self.current_token
             self._get_next_token()
             return Operand_Node(token)
+
+        elif self.current_token.type == LPARENT:
+            self._get_next_token()
+            node = self.expression()
+            self._get_next_token()
+            return node
         
     def term(self):
         node = self.factor()     
@@ -185,4 +201,3 @@ def main():
     
 if __name__ == '__main__':
     main()
-
