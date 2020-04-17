@@ -20,7 +20,7 @@ INTERPRETER: This class accepts an AST and evaluate it.
 '''
 
 
-INT, BOOLEAN, SUM, SUB, MUL, AND, OR, LPARENT, RPARENT, EOF = ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', '(', ')','EOF']
+INT, BOOLEAN, SUM, SUB, MUL, AND, OR, NOT, EQ, LESS, LPARENT, RPARENT, EOF = ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', 'NOT', 'EQ', 'LESS', '(', ')','EOF']
 
 class Token(object):
     def __init__(self, type, value):
@@ -38,6 +38,12 @@ class Operator_Node(AST):
         self.operation = operation
         self.right = right
     
+# Uni-Operator Node Class for AST
+class Uni_Operator_Node(AST):
+    def __init__(self, operation, expr):
+        self.operation = operation
+        self.expr = expr
+
 # Operand Node Class for AST
 class Operand_Node(AST):
     def __init__(self, token):
@@ -126,6 +132,18 @@ class Lexer(object):
                 elif word == 'false':
                     return Token(BOOLEAN, False)
 
+            elif self.current_char == '¬':
+                self.advance()
+                return Token(NOT,'¬')
+
+            elif self.current_char == '=':
+                self.advance()
+                return Token(EQ,'=')
+
+            elif self.current_char == '<':
+                self.advance()
+                return Token(LESS,'<')
+
 
             print(self.current_char)
 
@@ -145,11 +163,17 @@ class Parser(object):
     def _get_next_token(self):
         self.current_token = self.lexer.get_next_token()
         
-    def factor(self):          
+    def factor(self):         
         if self.current_token.type in [INT, BOOLEAN]:
             token = self.current_token
             self._get_next_token()
             return Operand_Node(token)
+
+        elif self.current_token.type == NOT:
+            token = self.current_token
+            self._get_next_token()
+            node = Uni_Operator_Node(operation=token, expr= self.factor())
+            return node
 
         elif self.current_token.type == LPARENT:
             self._get_next_token()
@@ -169,7 +193,7 @@ class Parser(object):
     
     def expression(self):      
         node = self.term()
-        while self.current_token.type in [SUM, SUB, AND, OR]:
+        while self.current_token.type in [SUM, SUB, AND, OR, EQ, LESS]:
             token = self.current_token
             self._get_next_token()
             node = Operator_Node(left=node, operation=token, right=self.term())  
@@ -183,11 +207,10 @@ class Interpreter(object):
         pass
         
     def visit(self, node):
-        
         if type(node) == Operand_Node:
             return self.visit_operand(node)
             
-        elif type(node) == Operator_Node:
+        elif type(node) in [Operator_Node, Uni_Operator_Node]:
             return self.visit_operator(node)
         
     def visit_operand(self, node):
@@ -208,9 +231,17 @@ class Interpreter(object):
 
         elif node.operation.type == OR:
             return self.visit(node.left) or self.visit(node.right)
-        
-        
-            
+
+        elif node.operation.type == EQ:
+            return self.visit(node.left) == self.visit(node.right)
+
+        elif node.operation.type == LESS:
+            return self.visit(node.left) < self.visit(node.right)
+
+        elif node.operation.type == NOT:
+            return not (self.visit(node.expr))
+
+
     def eval(self, root):
         return self.visit(root)
 
