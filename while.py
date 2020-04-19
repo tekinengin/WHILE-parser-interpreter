@@ -17,11 +17,22 @@ PARSER: Parser is using tokenized input in order to create Abstract-Syntax Tree 
 
 INTERPRETER: This class accepts an AST and evaluate it.
 
+Examples:
+
+x := 10
+
+x := 10 < 0 ? 1 : 0
+
+if true then { x := 10 ; y := ( 20 * 10 - -3 } else skip
+
+while ¬ ( y - -3 = y * z ∨ n * y < 1 * 2 ) do skip 
+
+
 '''
 
 
-INT, BOOLEAN, SUM, SUB, MUL, AND, OR, NOT, EQ, LESS, LPARENT, RPARENT, ASSIGN, ID, SEMCOL, SKIP, LSCOPE, RSCOPE, IF, THEN, ELSE, WHILE, DO, EOF = \
-        ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', 'NOT', 'EQ', 'LESS', '(', ')', ':=', 'ID', ';', 'SKIP', '{', '}', 'IF', 'THEN', 'ELSE', 'WHILE', 'DO','EOF']
+INT, BOOLEAN, SUM, SUB, MUL, AND, OR, NOT, EQ, LESS, LPARENT, RPARENT, ASSIGN, ID, SEMCOL, SKIP, LSCOPE, RSCOPE, IF, THEN, ELSE, WHILE, DO, TERNARY, COLON, EOF = \
+        ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', 'NOT', 'EQ', 'LESS', '(', ')', ':=', 'ID', ';', 'SKIP', '{', '}', 'IF', 'THEN', 'ELSE', 'WHILE', 'DO', '?', ':','EOF']
 
 class Token(object):
     def __init__(self, type, value):
@@ -216,6 +227,14 @@ class Lexer(object):
             elif self.current_char == ';':
                 self.advance()
                 return Token(SEMCOL, ';')
+            
+            elif self.current_char == '?':
+                self.advance()
+                return Token(TERNARY, '?')
+            
+            elif self.current_char == ':':
+                self.advance()
+                return Token(COLON, ':')
 
             
             raise Exception('Syntax Error...')
@@ -287,7 +306,7 @@ class Parser(object):
         left = self.variable()
         token = self.current_token
         self._get_next_token()
-        right = self.arith_expression()
+        right = self.bool_expression()
         node = Assign_Node(left, token, right)
         return node
 
@@ -336,6 +355,13 @@ class Parser(object):
             token = self.current_token
             self._get_next_token()
             node = Operator_Node(left=node, operation=token, right=self.bool_first_pri_expr())
+            
+        if self.current_token.type == TERNARY:
+            self._get_next_token() ## skip '?'
+            then_expression = self.bool_expression()
+            self._get_next_token() ## skip ':'
+            else_expression = self.bool_expression()
+            return If_Node(node, then_expression, else_expression)
         return node 
     
     def bool_first_pri_expr(self):
