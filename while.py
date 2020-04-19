@@ -384,8 +384,17 @@ def main():
         parser = Parser(lexer)
         AST = parser.parse()
         interpreter = Interpreter()
-        result = interpreter.eval(AST)
-        print(interpreter.GLOBAL_SCOPE)
+        interpreter.eval(AST)
+        keys = list(interpreter.GLOBAL_SCOPE.keys())
+        len_keys = len(keys)
+        result = '{'
+        for index in range(len_keys):
+            result += keys[index] + ' → ' + str(interpreter.GLOBAL_SCOPE[keys[index]])
+            if len_keys - index - 1 > 0:
+                result += ', '
+    
+        result += '}'
+        print(result)
     
 if __name__ == '__main__':
     main()
