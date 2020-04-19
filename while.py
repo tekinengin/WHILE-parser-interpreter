@@ -188,9 +188,11 @@ class Lexer(object):
                     return Token(ID, word)
 
             elif self.current_char == '{':
+                self.advance()
                 return Token(LSCOPE, '{')
 
             elif self.current_char == '}':
+                self.advance()
                 return Token(RSCOPE, '}')
 
 
@@ -215,11 +217,6 @@ class Lexer(object):
                 self.advance()
                 return Token(SEMCOL, ';')
 
-
-
-            print(self.current_char)
-
-
             
             raise Exception('Syntax Error...')
             
@@ -235,32 +232,30 @@ class Parser(object):
         self.current_token = self.lexer.get_next_token()
 
     def if_statement(self):
-        condition = self.expression()
+        condition = self.bool_expression()
+        #print(self.current_token.type)
         self._get_next_token() ## skip 'then' token
-        then_scope = self.scope_statement()
+        then_scope = self.statement()
         self._get_next_token() ## skip 'else' token
-        else_scope = self.scope_statement()
+        else_scope = self.statement()
         return If_Node(condition, then_scope, else_scope)
 
     def while_statement(self):
-        condition = self.expression()
+        condition = self.bool_expression()
         self._get_next_token() ## Skip 'do' token
-        scope = self.scope_statement()
+        scope = self.statement()
         return While_Node(condition, scope)
         
     def scope_statement(self):
-        nodes = self.statement_list()
-        
+        nodes = self.statement_list() 
         root = Scope_Node()
         for node in nodes:
             root.statement_list.append(node)
-
         return root
         
     def statement_list(self):
         node = self.statement()
         scope = [node]
-
         while self.current_token.type == SEMCOL:
             self._get_next_token()
             scope.append(self.statement())
@@ -268,9 +263,11 @@ class Parser(object):
         return scope
         
     def statement(self):
+        #print(self.current_token.type)
         if self.current_token.type == ID:
             node = self.assignment_statement()
         elif self.current_token.type == SKIP:
+            self._get_next_token()
             node = Pass_Node()
         elif self.current_token.type == IF:
             self._get_next_token()
@@ -278,13 +275,19 @@ class Parser(object):
         elif self.current_token.type == WHILE:
             self._get_next_token()
             node = self.while_statement()
+        elif self.current_token.type == LSCOPE:
+            #print(self.current_token.type)
+            self._get_next_token()
+            #print(self.current_token.type)
+            node = self.scope_statement()
+            self._get_next_token() ## skip RSCOPE
         return node
 
     def assignment_statement(self):
         left = self.variable()
         token = self.current_token
         self._get_next_token()
-        right = self.expression()
+        right = self.arith_expression()
         node = Assign_Node(left, token, right)
         return node
 
@@ -293,7 +296,8 @@ class Parser(object):
         self._get_next_token()
         return node
         
-    def factor(self):         
+    def factor(self): 
+        #print(self.current_token.type)
         if self.current_token.type in [INT, BOOLEAN]:
             token = self.current_token
             self._get_next_token()
@@ -307,7 +311,7 @@ class Parser(object):
 
         elif self.current_token.type == LPARENT:
             self._get_next_token()
-            node = self.expression()
+            node = self.bool_expression()
             self._get_next_token()
             return node
 
@@ -317,6 +321,7 @@ class Parser(object):
 
         
     def term(self):
+        #print(self.current_token.type)
         node = self.factor()     
         while self.current_token.type is MUL:
             token = self.current_token
@@ -324,9 +329,28 @@ class Parser(object):
             node = Operator_Node(left=node, operation=token, right=self.factor())
         return node
     
-    def expression(self):      
+    def bool_expression(self):
+        #print(self.current_token.type)
+        node = self.bool_first_pri_expr()
+        while self.current_token.type in [AND, OR]:
+            token = self.current_token
+            self._get_next_token()
+            node = Operator_Node(left=node, operation=token, right=self.bool_first_pri_expr())
+        return node 
+    
+    def bool_first_pri_expr(self):
+        #print(self.current_token.type)
+        node = self.arith_expression()
+        while self.current_token.type in [EQ, LESS]:
+            token = self.current_token
+            self._get_next_token()
+            node = Operator_Node(left=node, operation=token, right=self.arith_expression())
+        return node
+    
+    def arith_expression(self):
+        #print(self.current_token.type)
         node = self.term()
-        while self.current_token.type in [SUM, SUB, AND, OR, EQ, LESS]:
+        while self.current_token.type in [SUM, SUB]:
             token = self.current_token
             self._get_next_token()
             node = Operator_Node(left=node, operation=token, right=self.term())  
@@ -442,7 +466,7 @@ def main():
         AST = parser.parse()
         interpreter = Interpreter()
         interpreter.eval(AST)
-        keys = list(interpreter.GLOBAL_SCOPE.keys())
+        keys = sorted(list(interpreter.GLOBAL_SCOPE.keys()))
         len_keys = len(keys)
         result = '{'
         for index in range(len_keys):
