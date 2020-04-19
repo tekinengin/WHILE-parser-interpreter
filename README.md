@@ -22,7 +22,15 @@ PARSER: Parser is using tokenized input in order to create Abstract-Syntax Tree 
 
 INTERPRETER: This class accepts an AST and evaluate it.
 
+Examples:
 
+x := 10
+
+x := 10 < 0 ? 1 : 0
+
+if true then { x := 10 ; y := ( 20 * 10 - -3 } else skip
+
+while ¬ ( y - -3 = y * z ∨ n * y < 1 * 2 ) do skip 
 
 
 

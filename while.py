@@ -27,7 +27,6 @@ if true then { x := 10 ; y := ( 20 * 10 - -3 } else skip
 
 while ¬ ( y - -3 = y * z ∨ n * y < 1 * 2 ) do skip 
 
-
 '''
 
 
