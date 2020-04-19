@@ -20,7 +20,8 @@ INTERPRETER: This class accepts an AST and evaluate it.
 '''
 
 
-INT, BOOLEAN, SUM, SUB, MUL, AND, OR, NOT, EQ, LESS, LPARENT, RPARENT, EOF = ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', 'NOT', 'EQ', 'LESS', '(', ')','EOF']
+INT, BOOLEAN, SUM, SUB, MUL, AND, OR, NOT, EQ, LESS, LPARENT, RPARENT, ASSIGN, ID, SEMCOL, SKIP, LSCOPE, RSCOPE,  EOF = \
+        ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', 'NOT', 'EQ', 'LESS', '(', ')', ':=', 'ID', ';', 'SKIP', '{', '}','EOF']
 
 class Token(object):
     def __init__(self, type, value):
@@ -49,6 +50,22 @@ class Operand_Node(AST):
     def __init__(self, token):
         self.type = token.type
         self.value = token.value
+
+# Assign Node Class for AST
+class Assign_Node(AST):
+    def __init__(self, var, operation, expr):
+        self.var = var
+        self.operation = operation
+        self.expr = expr
+
+# Variable Node Class for AST
+class Var_Node(AST):
+    def __init__(self, token):
+        self.token = token
+        self.id = token.value
+
+class Pass_Node(AST):
+    pass
        
 # Lexer Class in order to tokenize input 
 class Lexer(object):
@@ -65,6 +82,15 @@ class Lexer(object):
             self.current_char = None
         else:
             self.current_char = self.text[self.current_pos]
+
+    def check_next(self):
+        pos = self.current_pos + 1
+        
+        if pos == len(self.text):
+            return None
+        else:
+            return self.text[pos]
+
             
     # Read whole number
     def get_int(self):
@@ -77,7 +103,7 @@ class Lexer(object):
     # Read word
     def get_word(self):
         result = ''
-        while self.current_char is not None and self.current_char.isalpha():
+        while self.current_char is not None and self.current_char.isalnum():
             result += self.current_char
             self.advance()
         return result
@@ -131,6 +157,17 @@ class Lexer(object):
                     return Token(BOOLEAN, True)
                 elif word == 'false':
                     return Token(BOOLEAN, False)
+                elif word == 'skip':
+                    return Token(SKIP, 'pass') # ????
+                else:
+                    return Token(ID, word)
+
+            elif self.current_char == '{':
+                return Token(LSCOPE, '{')
+
+            elif self.current_char == '}':
+                return Token(RSCOPE, '}')
+
 
             elif self.current_char == '¬':
                 self.advance()
@@ -144,6 +181,16 @@ class Lexer(object):
                 self.advance()
                 return Token(LESS,'<')
 
+            elif self.current_char == ':' and self.check_next() == '=':
+                self.advance()
+                self.advance()
+                return Token(ASSIGN, ':=')
+
+            elif self.current_char == ';':
+                self.advance()
+                return Token(SEMCOL, ';')
+
+
 
             print(self.current_char)
 
@@ -156,12 +203,24 @@ class Lexer(object):
 class Parser(object):
     def __init__(self,lexer):
         self.lexer = lexer
-
         self.current_token = self.lexer.get_next_token()
 
         
     def _get_next_token(self):
         self.current_token = self.lexer.get_next_token()
+
+    def assignment_statement(self):
+        left = self.variable()
+        token = self.current_token
+        self._get_next_token()
+        right = self.expression()
+        node = Assign_Node(left, token, right)
+        return node
+
+    def variable(self):
+        node = Var_Node(self.current_token)
+        self._get_next_token()
+        return node
         
     def factor(self):         
         if self.current_token.type in [INT, BOOLEAN]:
@@ -181,6 +240,9 @@ class Parser(object):
             self._get_next_token()
             return node
 
+        else:
+            node = self.variable()
+            return node
 
         
     def term(self):
@@ -200,14 +262,23 @@ class Parser(object):
         return node 
     
     def parse(self):
-        return self.expression()
-    
+        #return self.expression()
+        return self.assignment_statement()
 class Interpreter(object):
     def __init__(self):
-        pass
+        self.GLOBAL_SCOPE = {}
         
     def visit(self, node):
-        if type(node) == Operand_Node:
+        if type(node) == Assign_Node:
+            return self.visit_Assign(node)
+        
+        elif type(node) == Var_Node:
+            return self.visit_Var(node)
+        
+        elif type(node) == Pass_Node:
+            return self.visit_Pass()
+        
+        elif type(node) == Operand_Node:
             return self.visit_operand(node)
             
         elif type(node) in [Operator_Node, Uni_Operator_Node]:
@@ -240,8 +311,19 @@ class Interpreter(object):
 
         elif node.operation.type == NOT:
             return not (self.visit(node.expr))
+        
+    def visit_Assign(self,node):
+        var_name = node.var.id
+        self.GLOBAL_SCOPE[var_name] = self.visit(node.expr)
+        
+    def visit_Var(self, node):
+        var_name = node.id
+        value = self.ADT.get(var_name)
+        return value
 
-
+    def visit_Pass(self, node):
+        pass
+    
     def eval(self, root):
         return self.visit(root)
 
@@ -264,7 +346,7 @@ def main():
         AST = parser.parse()
         interpreter = Interpreter()
         result = interpreter.eval(AST)
-        print(result)
+        print(interpreter.GLOBAL_SCOPE)
     
 if __name__ == '__main__':
     main()
