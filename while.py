@@ -20,8 +20,8 @@ INTERPRETER: This class accepts an AST and evaluate it.
 '''
 
 
-INT, BOOLEAN, SUM, SUB, MUL, AND, OR, NOT, EQ, LESS, LPARENT, RPARENT, ASSIGN, ID, SEMCOL, SKIP, LSCOPE, RSCOPE,  EOF = \
-        ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', 'NOT', 'EQ', 'LESS', '(', ')', ':=', 'ID', ';', 'SKIP', '{', '}','EOF']
+INT, BOOLEAN, SUM, SUB, MUL, AND, OR, NOT, EQ, LESS, LPARENT, RPARENT, ASSIGN, ID, SEMCOL, SKIP, LSCOPE, RSCOPE, IF, THEN, ELSE,  EOF = \
+        ['INTEGER', 'BOOLEAN', 'SUM', 'SUB', 'MUL', 'AND', 'OR', 'NOT', 'EQ', 'LESS', '(', ')', ':=', 'ID', ';', 'SKIP', '{', '}', 'IF', 'THEN', 'ELSE','EOF']
 
 class Token(object):
     def __init__(self, type, value):
@@ -70,6 +70,12 @@ class Pass_Node(AST):
 class Scope_Node(AST):
     def __init__(self):
         self.statement_list = []
+
+class If_Node(AST):
+    def __init__(self, condition, then_scope, else_scope):
+        self.condition = condition
+        self.then_scope = then_scope
+        self.else_scope = else_scope
        
 # Lexer Class in order to tokenize input 
 class Lexer(object):
@@ -163,6 +169,12 @@ class Lexer(object):
                     return Token(BOOLEAN, False)
                 elif word == 'skip':
                     return Token(SKIP, 'pass') # ????
+                elif word == 'if':
+                    return Token(IF, 'IF')
+                elif word == 'then':
+                    return Token(THEN, 'THEN')
+                elif word == 'else':
+                    return Token(ELSE, 'ELSE')
                 else:
                     return Token(ID, word)
 
@@ -212,6 +224,18 @@ class Parser(object):
         
     def _get_next_token(self):
         self.current_token = self.lexer.get_next_token()
+
+
+
+
+    def if_statement(self):
+        condition = self.expression()
+        self._get_next_token() ## skip 'then' token
+        then_scope = self.scope_statement()
+        self._get_next_token() ## skip 'else' token
+        else_scope = self.scope_statement()
+        return If_Node(condition, then_scope, else_scope)
+
         
     def scope_statement(self):
         nodes = self.statement_list()
@@ -237,6 +261,9 @@ class Parser(object):
             node = self.assignment_statement()
         elif self.current_token.type == SKIP:
             node = Pass_Node()
+        elif self.current_token.type == IF:
+            self._get_next_token()
+            node = self.if_statement()
         return node
 
     def assignment_statement(self):
@@ -317,6 +344,9 @@ class Interpreter(object):
         elif type(node) in [Operator_Node, Uni_Operator_Node]:
             return self.visit_operator(node)
         
+        elif type(node) == If_Node:
+            return self.visit_If(node)
+        
     def visit_operand(self, node):
         return node.value
         
@@ -363,11 +393,16 @@ class Interpreter(object):
         for statement in node.statement_list:
             self.visit(statement)
     
+    def visit_If(self, node):
+        if self.visit(node.condition):
+            return self.visit(node.then_scope)
+        else:
+            return self.visit(node.else_scope)
+
     def eval(self, root):
         return self.visit(root)
 
-    
-    
+
 def main():
     while True:
         try:
