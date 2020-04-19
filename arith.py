@@ -66,6 +66,10 @@ class Var_Node(AST):
 
 class Pass_Node(AST):
     pass
+
+class Scope_Node(AST):
+    def __init__(self):
+        self.statement_list = []
        
 # Lexer Class in order to tokenize input 
 class Lexer(object):
@@ -208,6 +212,32 @@ class Parser(object):
         
     def _get_next_token(self):
         self.current_token = self.lexer.get_next_token()
+        
+    def scope_statement(self):
+        nodes = self.statement_list()
+        
+        root = Scope_Node()
+        for node in nodes:
+            root.statement_list.append(node)
+
+        return root
+        
+    def statement_list(self):
+        node = self.statement()
+        scope = [node]
+
+        while self.current_token.type == SEMCOL:
+            self._get_next_token()
+            scope.append(self.statement())
+
+        return scope
+        
+    def statement(self):
+        if self.current_token.type == ID:
+            node = self.assignment_statement()
+        elif self.current_token.type == SKIP:
+            node = Pass_Node()
+        return node
 
     def assignment_statement(self):
         left = self.variable()
@@ -262,21 +292,24 @@ class Parser(object):
         return node 
     
     def parse(self):
-        #return self.expression()
-        return self.assignment_statement()
+        return self.scope_statement()
+    
 class Interpreter(object):
     def __init__(self):
         self.GLOBAL_SCOPE = {}
         
     def visit(self, node):
-        if type(node) == Assign_Node:
+        if type(node) == Scope_Node:
+            return self.visit_Scope(node)
+        
+        elif type(node) == Assign_Node:
             return self.visit_Assign(node)
         
         elif type(node) == Var_Node:
             return self.visit_Var(node)
         
         elif type(node) == Pass_Node:
-            return self.visit_Pass()
+            return self.visit_Pass(node)
         
         elif type(node) == Operand_Node:
             return self.visit_operand(node)
@@ -318,11 +351,17 @@ class Interpreter(object):
         
     def visit_Var(self, node):
         var_name = node.id
-        value = self.ADT.get(var_name)
+        value = self.GLOBAL_SCOPE.get(var_name)
+        if value is None:
+            return 0 ## Assuming every variable is INTEGER
         return value
 
     def visit_Pass(self, node):
         pass
+    
+    def visit_Scope(self, node):
+        for statement in node.statement_list:
+            self.visit(statement)
     
     def eval(self, root):
         return self.visit(root)
