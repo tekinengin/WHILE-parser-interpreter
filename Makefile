@@ -1,2 +1,2 @@
 create_exec:
-	pyinstaller --onefile --distpath=./ arith.py
+	pyinstaller --onefile --distpath=./ while.py
