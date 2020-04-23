@@ -1,4 +1,4 @@
-# Programming Languages - Semantic Applications
+# Programming Languages - Semantic Applications - Natural Semantics (Big Step)
 
 Author: Engin Tekin
 
@@ -6,7 +6,7 @@ requirements: pyinstaller for Makefile purposes
 
 running: type ./test.sh in order to test script. This will create an executable and tests included in test file
 
-ARITH Language - Abstract Syntax Tree - Parser - Interpreter
+WHILE Language - Abstract Syntax Tree - Parser - Interpreter
 
 This script typed for CSE210A-Programming Languages - Semantic Applications
 
